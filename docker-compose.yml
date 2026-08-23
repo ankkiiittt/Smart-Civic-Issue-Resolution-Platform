@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: smart_civic_db
+    environment:
+      POSTGRES_DB: smart_civic
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smart_civic"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: smart_civic_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=smart_civic
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - JWT_SECRET=9a4f2c8d3e1b7f0a5c8d3e1b7f0a5c8d3e1b7f0a5c8d3e1b7f0a5c8d3e1b7f0a
+      - UPLOAD_DIR=/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads-data:/app/uploads
+
+  frontend:
+    build: ./frontend
+    container_name: smart_civic_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  uploads-data:
