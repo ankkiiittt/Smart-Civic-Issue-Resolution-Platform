@@ -3,6 +3,7 @@ package com.smartcivic.service.impl;
 import com.smartcivic.dto.IssueRequest;
 import com.smartcivic.dto.IssueResponse;
 import com.smartcivic.dto.IssueStatusUpdateRequest;
+import com.smartcivic.dto.OfficerSummaryResponse;
 import com.smartcivic.entity.*;
 import com.smartcivic.exception.BadRequestException;
 import com.smartcivic.exception.ResourceNotFoundException;
@@ -329,6 +330,79 @@ public class IssueServiceImpl implements IssueService {
         webSocketService.notifyIssueUpdate(id, "Issue deleted: " + issue.getTitle());
     }
 
+    @Override
+    @Transactional
+    public IssueResponse assignIssue(Long id, Long officerId, String adminUsername) {
+        Issue issue = issueRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Issue not found"));
+
+        User admin = userRepository.findByUsername(adminUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (admin.getRole() != UserRole.ADMIN) {
+            throw new BadRequestException("Only administrators can assign or reassign issues");
+        }
+
+        User officer = userRepository.findById(officerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Officer not found"));
+
+        if (officer.getRole() != UserRole.OFFICER && officer.getRole() != UserRole.ADMIN) {
+            throw new BadRequestException("Selected user is not an officer");
+        }
+
+        IssueStatus prevStatus = issue.getStatus();
+        issue.setAssignedOfficer(officer);
+
+        if (issue.getStatus() == IssueStatus.REPORTED) {
+            issue.setStatus(IssueStatus.ACKNOWLEDGED);
+        }
+
+        Issue updatedIssue = issueRepository.save(issue);
+
+        IssueHistory history = IssueHistory.builder()
+                .issue(updatedIssue)
+                .statusFrom(prevStatus.name())
+                .statusTo(updatedIssue.getStatus().name())
+                .changedBy(admin)
+                .comments("Assigned to " + officer.getFirstName() + " " + officer.getLastName() + " (" + officer.getUsername() + ") by Admin " + adminUsername)
+                .build();
+        issueHistoryRepository.save(history);
+
+        webSocketService.notifyIssueUpdate(updatedIssue.getId(), "Issue #" + updatedIssue.getId() + " assigned to officer " + officer.getUsername());
+
+        List<IssuePhoto> photos = issuePhotoRepository.findByIssueId(updatedIssue.getId());
+        return mapToResponse(updatedIssue, photos, admin, false);
+    }
+
+    @Override
+    public List<OfficerSummaryResponse> getAllOfficers() {
+        List<User> officers = userRepository.findByRole(UserRole.OFFICER);
+        List<OfficerProfile> profiles = officerProfileRepository.findAll();
+
+        return officers.stream().map(officer -> {
+            String deptName = "Municipal Services";
+            boolean isAvailable = true;
+
+            for (OfficerProfile profile : profiles) {
+                if (profile.getUser() != null && profile.getUser().getId().equals(officer.getId())) {
+                    if (profile.getDepartment() != null) {
+                        deptName = profile.getDepartment().getName();
+                    }
+                    isAvailable = profile.isAvailable();
+                    break;
+                }
+            }
+
+            return new OfficerSummaryResponse(
+                    officer.getId(),
+                    officer.getUsername(),
+                    officer.getFirstName(),
+                    officer.getLastName(),
+                    deptName,
+                    isAvailable
+            );
+        }).collect(Collectors.toList());
+    }
 
     private IssueResponse mapToResponse(Issue issue, List<IssuePhoto> photos, User currentUser, boolean hasUpvoted) {
         long upvoteCount = issueUpvoteRepository.countByIssueId(issue.getId());

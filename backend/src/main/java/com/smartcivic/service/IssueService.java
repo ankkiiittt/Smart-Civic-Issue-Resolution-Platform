@@ -3,6 +3,7 @@ package com.smartcivic.service;
 import com.smartcivic.dto.IssueRequest;
 import com.smartcivic.dto.IssueResponse;
 import com.smartcivic.dto.IssueStatusUpdateRequest;
+import com.smartcivic.dto.OfficerSummaryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,4 +19,6 @@ public interface IssueService {
     void removeUpvote(Long id, String username);
     IssueResponse updateIssueStatus(Long id, IssueStatusUpdateRequest request, MultipartFile photo, String officerUsername);
     void deleteIssue(Long id, String username);
+    IssueResponse assignIssue(Long id, Long officerId, String adminUsername);
+    List<OfficerSummaryResponse> getAllOfficers();
 }

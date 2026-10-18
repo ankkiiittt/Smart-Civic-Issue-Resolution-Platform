@@ -1,6 +1,0 @@
-com\smartcivic\service\WebSocketServiceImplTest.class
-com\smartcivic\config\DataSeederTest.class
-com\smartcivic\service\AnalyticsServiceImplTest.class
-com\smartcivic\service\AuthServiceImplTest.class
-com\smartcivic\scheduler\SlaSchedulerTest.class
-com\smartcivic\service\IssueServiceImplTest.class

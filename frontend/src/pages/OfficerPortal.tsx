@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import type { Issue, User } from '../services/api';
-import { Shield, CheckCircle, AlertTriangle, Eye } from 'lucide-react';
+import type { Issue, User, OfficerSummary } from '../services/api';
+import { Shield, CheckCircle, AlertTriangle, Eye, UserPlus, UserCheck } from 'lucide-react';
 import { SWAGGER_URL } from '../config';
 
 interface OfficerPortalProps {
@@ -12,6 +12,12 @@ export const OfficerPortal: React.FC<OfficerPortalProps> = ({ user }) => {
   const [assignedIssues, setAssignedIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Officers list for Admin assignment
+  const [officers, setOfficers] = useState<OfficerSummary[]>([]);
+  const [selectedOfficers, setSelectedOfficers] = useState<Record<number, number>>({});
+  const [assigningId, setAssigningId] = useState<number | null>(null);
+  const [assignmentSuccess, setAssignmentSuccess] = useState<string | null>(null);
 
   // Status transition state
   const [activeIssueId, setActiveIssueId] = useState<number | null>(null);
@@ -44,7 +50,30 @@ export const OfficerPortal: React.FC<OfficerPortalProps> = ({ user }) => {
 
   useEffect(() => {
     fetchAssignedIssues();
+    if (user?.role === 'ADMIN') {
+      api.getOfficers()
+        .then((data) => setOfficers(data))
+        .catch((err) => console.error('Failed to load officers:', err));
+    }
   }, [user]);
+
+  const handleAssign = async (issueId: number) => {
+    const officerId = selectedOfficers[issueId];
+    if (!officerId) return;
+
+    setAssigningId(issueId);
+    try {
+      await api.assignIssue(issueId, officerId);
+      const officerObj = officers.find(o => o.id === officerId);
+      setAssignmentSuccess(`Issue #${issueId} successfully assigned to ${officerObj ? officerObj.firstName + ' ' + officerObj.lastName : 'officer'}!`);
+      setTimeout(() => setAssignmentSuccess(null), 4000);
+      await fetchAssignedIssues();
+    } catch (err: any) {
+      alert(err.message || 'Failed to assign issue.');
+    } finally {
+      setAssigningId(null);
+    }
+  };
 
   const handleStatusUpdateSubmit = async (e: React.FormEvent, issueId: number) => {
     e.preventDefault();
@@ -95,10 +124,27 @@ export const OfficerPortal: React.FC<OfficerPortalProps> = ({ user }) => {
         <div>
           <h2 style={{ fontSize: '24px' }}>Municipal Officer Workspace</h2>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            {user.role === 'ADMIN' ? 'Viewing all system incidents (Administrator Mode)' : `Viewing issues assigned to Officer ${user.firstName} ${user.lastName}`}
+            {user.role === 'ADMIN' ? 'Viewing all system incidents (Administrator Mode — You can assign or reassign any incident below)' : `Viewing issues assigned to Officer ${user.firstName} ${user.lastName}`}
           </p>
         </div>
       </div>
+
+      {assignmentSuccess && (
+        <div style={{
+          padding: '12px 18px',
+          borderRadius: '8px',
+          background: 'rgba(16, 185, 129, 0.15)',
+          border: '1px solid var(--accent-success)',
+          color: 'var(--accent-success)',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          <CheckCircle size={18} />
+          <span>{assignmentSuccess}</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="glass-panel" style={{ padding: '80px', color: 'var(--text-secondary)' }}>
@@ -152,19 +198,75 @@ export const OfficerPortal: React.FC<OfficerPortalProps> = ({ user }) => {
                   <span>Latitude: <strong>{issue.latitude.toFixed(5)}</strong></span>
                   <span>Longitude: <strong>{issue.longitude.toFixed(5)}</strong></span>
                 </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
+                  <UserCheck size={16} style={{ color: issue.assignedOfficerUsername ? 'var(--accent-success)' : 'var(--accent-warning)' }} />
+                  <span style={{ color: 'var(--text-secondary)' }}>Assigned Officer:</span>
+                  <strong style={{ color: issue.assignedOfficerUsername ? 'var(--accent-primary)' : 'var(--accent-warning)' }}>
+                    {issue.assignedOfficerUsername ? `@${issue.assignedOfficerUsername}` : 'Unassigned (Awaiting Assignment)'}
+                  </strong>
+                </div>
               </div>
 
               {/* Right Column: Actions Forms */}
-              <div style={{ flex: 1.2, minWidth: '280px', display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: '1px solid var(--border-color)', paddingLeft: '24px' }}>
+              <div style={{ flex: 1.2, minWidth: '280px', display: 'flex', flexDirection: 'column', gap: '14px', borderLeft: '1px solid var(--border-color)', paddingLeft: '24px' }}>
                 
+                {/* Admin Assignment Section */}
+                {user.role === 'ADMIN' && (
+                  <div style={{
+                    padding: '14px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--border-color)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 650, color: 'var(--text-primary)' }}>
+                      <UserPlus size={16} style={{ color: 'var(--accent-primary)' }} />
+                      <span>{issue.assignedOfficerUsername ? 'Reassign Incident' : 'Assign Incident to Officer'}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <select
+                        className="form-input form-select"
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '12px' }}
+                        value={selectedOfficers[issue.id] !== undefined ? selectedOfficers[issue.id] : (officers.find(o => o.username === issue.assignedOfficerUsername)?.id || '')}
+                        onChange={(e) => setSelectedOfficers(prev => ({ ...prev, [issue.id]: Number(e.target.value) }))}
+                      >
+                        <option value="">-- Select an Officer --</option>
+                        {officers.map((officer) => (
+                          <option key={officer.id} value={officer.id}>
+                            {officer.firstName} {officer.lastName} (@{officer.username}) — {officer.departmentName}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        className="btn btn-primary"
+                        style={{ width: '100%', padding: '7px 12px', fontSize: '12px', gap: '6px' }}
+                        onClick={() => handleAssign(issue.id)}
+                        disabled={
+                          assigningId === issue.id ||
+                          !selectedOfficers[issue.id] ||
+                          selectedOfficers[issue.id] === officers.find(o => o.username === issue.assignedOfficerUsername)?.id
+                        }
+                      >
+                        <UserCheck size={14} />
+                        <span>{assigningId === issue.id ? 'Assigning...' : (issue.assignedOfficerUsername ? 'Confirm Reassign' : 'Confirm Assignment')}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {activeIssueId !== issue.id ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <button 
                       onClick={() => {
                         setActiveIssueId(issue.id);
                         setNewStatus(issue.status === 'REPORTED' ? 'ACKNOWLEDGED' : 'IN_PROGRESS');
                       }}
-                      className="btn btn-primary"
+                      className="btn btn-secondary"
                       style={{ width: '100%' }}
                       disabled={issue.status === 'RESOLVED'}
                     >

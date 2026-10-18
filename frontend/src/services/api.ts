@@ -23,6 +23,15 @@ export interface Department {
   description: string;
 }
 
+export interface OfficerSummary {
+  id: number;
+  username: string;
+  firstName: string;
+  lastName: string;
+  departmentName: string;
+  available: boolean;
+}
+
 export interface IssuePhoto {
   id: number;
   photoUrl: string;
@@ -254,5 +263,23 @@ export const api = {
       headers: getHeaders(),
     });
     return handleResponse(res);
+  },
+
+  // Officers & Assignment
+  async getOfficers(): Promise<OfficerSummary[]> {
+    const res = await fetch(`${API_BASE_URL}/issues/officers`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+    return handleResponse<OfficerSummary[]>(res);
+  },
+
+  async assignIssue(id: number, officerId: number): Promise<Issue> {
+    const res = await fetch(`${API_BASE_URL}/issues/${id}/assign?officerId=${officerId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
+    const data = await handleResponse<any>(res);
+    return mapIssueResponse(data);
   }
 };

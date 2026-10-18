@@ -4,6 +4,7 @@ import com.smartcivic.dto.ApiResponse;
 import com.smartcivic.dto.IssueRequest;
 import com.smartcivic.dto.IssueResponse;
 import com.smartcivic.dto.IssueStatusUpdateRequest;
+import com.smartcivic.dto.OfficerSummaryResponse;
 import com.smartcivic.service.IssueService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -119,5 +120,20 @@ public class IssueController {
             Authentication authentication) {
         issueService.deleteIssue(id, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Issue deleted successfully"));
+    }
+
+    @GetMapping("/officers")
+    public ResponseEntity<ApiResponse<List<OfficerSummaryResponse>>> getOfficers() {
+        List<OfficerSummaryResponse> officers = issueService.getAllOfficers();
+        return ResponseEntity.ok(ApiResponse.success(officers));
+    }
+
+    @PutMapping("/{id}/assign")
+    public ResponseEntity<ApiResponse<IssueResponse>> assignIssue(
+            @PathVariable Long id,
+            @RequestParam("officerId") Long officerId,
+            Authentication authentication) {
+        IssueResponse response = issueService.assignIssue(id, officerId, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

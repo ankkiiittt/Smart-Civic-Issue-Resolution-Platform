@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import type { Issue, Category, User } from '../services/api';
+import type { Issue, Category, User, OfficerSummary } from '../services/api';
 import { IssueMap } from '../components/IssueMap';
 import { IssueCard } from '../components/IssueCard';
-import { MapPin, Plus, Search, Filter, Compass, Image as ImageIcon, X, AlertCircle, ThumbsUp } from 'lucide-react';
+import { MapPin, Plus, Search, Filter, Compass, Image as ImageIcon, X, AlertCircle, ThumbsUp, UserPlus, UserCheck } from 'lucide-react';
 import { getPhotoUrl } from '../config';
 
 interface DashboardProps {
@@ -45,6 +45,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Officers list for Admin quick assignment
+  const [officers, setOfficers] = useState<OfficerSummary[]>([]);
+  const [assignOfficerId, setAssignOfficerId] = useState<number | ''>('');
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'ADMIN') {
+      api.getOfficers()
+        .then(setOfficers)
+        .catch(err => console.error('Failed to load officers in dashboard:', err));
+    }
+  }, [user]);
 
   // Categories loading
   useEffect(() => {
@@ -97,6 +110,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       setSelectedIssue(null);
     }
   }, [selectedIssueId]);
+
+  useEffect(() => {
+    if (selectedIssue && officers.length > 0) {
+      const found = officers.find(o => o.username === selectedIssue.assignedOfficerUsername);
+      setAssignOfficerId(found ? found.id : '');
+    } else {
+      setAssignOfficerId('');
+    }
+  }, [selectedIssue, officers]);
+
+  const handleAdminAssignInModal = async () => {
+    if (!selectedIssue || !assignOfficerId) return;
+    setIsAssigning(true);
+    try {
+      const updated = await api.assignIssue(selectedIssue.id, Number(assignOfficerId));
+      setSelectedIssue(updated);
+      fetchIssues();
+    } catch (err: any) {
+      alert(err.message || 'Failed to assign issue');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -606,7 +642,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Assigned Officer:</span><br/>
-                  <strong>{selectedIssue.assignedOfficerUsername || 'Unassigned'}</strong>
+                  <strong style={{ color: selectedIssue.assignedOfficerUsername ? 'var(--accent-primary)' : 'var(--accent-warning)' }}>
+                    {selectedIssue.assignedOfficerUsername ? `@${selectedIssue.assignedOfficerUsername}` : 'Unassigned'}
+                  </strong>
                 </div>
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Latitude / Longitude:</span><br/>
@@ -617,6 +655,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                   <strong>{selectedIssue.category.targetSlaHours} Hours</strong>
                 </div>
               </div>
+
+              {/* Admin Quick Assignment */}
+              {user?.role === 'ADMIN' && (
+                <div style={{
+                  padding: '14px',
+                  borderRadius: '8px',
+                  background: 'rgba(99, 102, 241, 0.08)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 650, color: 'var(--accent-primary)' }}>
+                    <UserPlus size={16} />
+                    <span>Administrator Duty Assignment: {selectedIssue.assignedOfficerUsername ? `Reassign from @${selectedIssue.assignedOfficerUsername}` : 'Assign to Officer'}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      className="form-input form-select"
+                      style={{ flex: 1, padding: '7px 10px', fontSize: '13px' }}
+                      value={assignOfficerId}
+                      onChange={(e) => setAssignOfficerId(Number(e.target.value))}
+                    >
+                      <option value="">-- Choose Officer --</option>
+                      {officers.map((officer) => (
+                        <option key={officer.id} value={officer.id}>
+                          {officer.firstName} {officer.lastName} (@{officer.username}) — {officer.departmentName}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn btn-primary"
+                      style={{ padding: '7px 16px', fontSize: '13px', whiteSpace: 'nowrap' }}
+                      onClick={handleAdminAssignInModal}
+                      disabled={isAssigning || !assignOfficerId || assignOfficerId === officers.find(o => o.username === selectedIssue.assignedOfficerUsername)?.id}
+                    >
+                      {isAssigning ? 'Assigning...' : 'Assign Work'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Audit history logs timeline */}
               <div>
