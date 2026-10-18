@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Issue } from '../services/api';
 import { ThumbsUp, Calendar, Clock, AlertTriangle, User, UserCheck } from 'lucide-react';
+import { getPhotoUrl } from '../config';
 
 interface IssueCardProps {
   issue: Issue;
@@ -88,7 +89,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
           {issue.photos.map((p) => (
             <img 
               key={p.id}
-              src={`http://localhost:8080${p.photoUrl}`}
+              src={getPhotoUrl(p.photoUrl)}
               alt="Issue evidence"
               style={{
                 width: '64px',
@@ -98,7 +99,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
                 border: '1px solid var(--border-color)',
                 cursor: 'pointer'
               }}
-              onClick={() => window.open(`http://localhost:8080${p.photoUrl}`, '_blank')}
+              onClick={() => window.open(getPhotoUrl(p.photoUrl), '_blank')}
             />
           ))}
         </div>

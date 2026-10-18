@@ -1,0 +1,19 @@
+# Netlify Configuration for Smart Civic Issue Resolution Platform
+
+[build]
+  # Monorepo directory setup: frontend is in the 'frontend' subfolder
+  base = "frontend"
+  publish = "dist"
+  command = "npm run build"
+
+# SPA Fallback: Routes client-side React Router paths (/auth, /portal, /analytics) to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Cache static assets for fast global CDN delivery
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

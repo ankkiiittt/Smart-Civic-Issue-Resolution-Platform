@@ -4,6 +4,7 @@ import type { Issue, Category, User } from '../services/api';
 import { IssueMap } from '../components/IssueMap';
 import { IssueCard } from '../components/IssueCard';
 import { MapPin, Plus, Search, Filter, Compass, Image as ImageIcon, X, AlertCircle, ThumbsUp } from 'lucide-react';
+import { getPhotoUrl } from '../config';
 
 interface DashboardProps {
   user: User | null;
@@ -574,7 +575,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                     {selectedIssue.photos.map((p) => (
                       <div key={p.id} style={{ position: 'relative' }}>
                         <img 
-                          src={`http://localhost:8080${p.photoUrl}`}
+                          src={getPhotoUrl(p.photoUrl)}
                           alt="Incident view"
                           style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)' }}
                         />

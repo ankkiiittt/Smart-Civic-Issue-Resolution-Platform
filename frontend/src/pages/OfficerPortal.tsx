@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Issue, User } from '../services/api';
 import { Shield, CheckCircle, AlertTriangle, Eye } from 'lucide-react';
+import { SWAGGER_URL } from '../config';
 
 interface OfficerPortalProps {
   user: User | null;
@@ -178,7 +179,7 @@ export const OfficerPortal: React.FC<OfficerPortalProps> = ({ user }) => {
                     </button>
                     
                     <button
-                      onClick={() => window.open(`http://localhost:8080/swagger-ui/index.html`, '_blank')}
+                      onClick={() => window.open(SWAGGER_URL, '_blank')}
                       className="btn btn-secondary"
                       style={{ width: '100%', gap: '6px' }}
                     >

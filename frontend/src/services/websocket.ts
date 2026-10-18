@@ -1,5 +1,6 @@
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { WS_BROKER_URL, SOCKJS_URL } from '../config';
 
 export interface WsMessage {
   issueId: number;
@@ -13,8 +14,8 @@ export function connectWebSocket(
   onEscalation: (msg: WsMessage) => void
 ) {
   const client = new Client({
-    // Standard WS URL
-    brokerURL: 'ws://localhost:8080/ws',
+    // Standard WS URL (wss:// in production, ws:// in local dev)
+    brokerURL: WS_BROKER_URL,
     reconnectDelay: 5000,
     heartbeatIncoming: 4000,
     heartbeatOutgoing: 4000,
@@ -22,7 +23,7 @@ export function connectWebSocket(
 
   // Fallback SockJS factory for older environment compatibility
   client.webSocketFactory = () => {
-    return new SockJS('http://localhost:8080/ws');
+    return new SockJS(SOCKJS_URL);
   };
 
   client.onConnect = () => {
