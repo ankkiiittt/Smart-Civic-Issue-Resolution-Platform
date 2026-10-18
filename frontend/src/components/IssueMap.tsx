@@ -77,10 +77,11 @@ export const IssueMap: React.FC<IssueMapProps> = ({
       zoomControl: true,
     });
 
-    // Premium CartoDB Dark Matter tile layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maxZoom: 20,
+    // OpenStreetMap tile layer (100% free, no API key or watermark required)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+      className: 'dark-tiles',
     }).addTo(map);
 
     // Group for dynamic issue markers
